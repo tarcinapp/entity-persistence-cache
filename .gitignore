@@ -1,0 +1,41 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Quarkus build artefacts
+.quarkus/
+*-runner
+*-runner.jar
+*.native
+
+# IDE — IntelliJ IDEA
+.idea/
+*.iml
+
+# IDE — Eclipse / STS
+.eclipse/
+.settings/
+.classpath
+.project
+nb-configuration.xml
+
+# IDE — VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+.env
+.env.*
+*.env
+src/main/resources/application-local.properties
+src/main/resources/application-local*.properties
+
+# Logs & JVM crash dumps
+*.log
+hs_err_pid*

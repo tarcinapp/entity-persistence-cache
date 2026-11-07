@@ -1,0 +1,37 @@
+package io.tarcinapp.epc.routes.entities;
+
+import io.tarcinapp.epc.processors.entities.DeleteReactionsByEntityIdPreProcessor;
+import io.tarcinapp.epc.processors.entities.DeleteReactionsByEntityIdPostProcessor;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.apache.camel.builder.RouteBuilder;
+
+/**
+ * Camel route for deleteReactionsByEntityId.
+ * Execution flow: DeleteReactionsByEntityIdPreProcessor → backend proxy → DeleteReactionsByEntityIdPostProcessor
+ */
+@ApplicationScoped
+public class DeleteReactionsByEntityIdRoute extends RouteBuilder {
+
+    @Inject
+    DeleteReactionsByEntityIdPreProcessor preProcessor;
+
+    @Inject
+    DeleteReactionsByEntityIdPostProcessor postProcessor;
+
+    @Override
+    public void configure() {
+        from("platform-http:/entities/{id}/reactions?httpMethodRestrict=DELETE")
+            .routeId("deleteReactionsByEntityId")
+            .process(preProcessor)
+            .choice()
+                .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                .otherwise()
+                    .removeHeader("Content-Length")
+                    .removeHeader("Transfer-Encoding")
+                    .toD("{{backend.base-url}}/entities/${header.id}/reactions?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .process(postProcessor)
+            .end();
+    }
+}

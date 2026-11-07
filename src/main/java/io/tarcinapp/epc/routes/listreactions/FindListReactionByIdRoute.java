@@ -1,0 +1,37 @@
+package io.tarcinapp.epc.routes.listreactions;
+
+import io.tarcinapp.epc.processors.listreactions.FindListReactionByIdPreProcessor;
+import io.tarcinapp.epc.processors.listreactions.FindListReactionByIdPostProcessor;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.apache.camel.builder.RouteBuilder;
+
+/**
+ * Camel route for findListReactionById.
+ * Execution flow: FindListReactionByIdPreProcessor → backend proxy → FindListReactionByIdPostProcessor
+ */
+@ApplicationScoped
+public class FindListReactionByIdRoute extends RouteBuilder {
+
+    @Inject
+    FindListReactionByIdPreProcessor preProcessor;
+
+    @Inject
+    FindListReactionByIdPostProcessor postProcessor;
+
+    @Override
+    public void configure() {
+        from("platform-http:/list-reactions/{id}?httpMethodRestrict=GET")
+            .routeId("findListReactionById")
+            .process(preProcessor)
+            .choice()
+                .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                .otherwise()
+                    .removeHeader("Content-Length")
+                    .removeHeader("Transfer-Encoding")
+                    .toD("{{backend.base-url}}/list-reactions/${header.id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .process(postProcessor)
+            .end();
+    }
+}
