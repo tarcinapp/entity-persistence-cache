@@ -30,7 +30,7 @@ public class FindListsByEntityIdRoute extends RouteBuilder {
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")
-                    .toD("{{backend.base-url}}/entities/${header.id}/lists?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .toD("{{backend.base-url}}${header.CamelHttpPath}?bridgeEndpoint=true&throwExceptionOnFailure=false")
                     .process(postProcessor)
             .end();
     }

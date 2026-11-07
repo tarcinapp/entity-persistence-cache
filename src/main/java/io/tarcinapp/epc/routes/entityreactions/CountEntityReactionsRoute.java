@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.entityreactions;
 
 import io.tarcinapp.epc.processors.entityreactions.CountEntityReactionsPreProcessor;
 import io.tarcinapp.epc.processors.entityreactions.CountEntityReactionsPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for countEntityReactions.
  * Execution flow: CountEntityReactionsPreProcessor → backend proxy → CountEntityReactionsPostProcessor
  */
+@Priority(10)
 @ApplicationScoped
 public class CountEntityReactionsRoute extends RouteBuilder {
 

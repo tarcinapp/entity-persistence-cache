@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.entities;
 
 import io.tarcinapp.epc.processors.entities.CountEntitiesPreProcessor;
 import io.tarcinapp.epc.processors.entities.CountEntitiesPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for countEntities.
  * Execution flow: CountEntitiesPreProcessor → backend proxy → CountEntitiesPostProcessor
  */
+@Priority(10)
 @ApplicationScoped
 public class CountEntitiesRoute extends RouteBuilder {
 

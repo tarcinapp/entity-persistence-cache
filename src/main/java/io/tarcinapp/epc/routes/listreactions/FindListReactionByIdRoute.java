@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.listreactions;
 
 import io.tarcinapp.epc.processors.listreactions.FindListReactionByIdPreProcessor;
 import io.tarcinapp.epc.processors.listreactions.FindListReactionByIdPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for findListReactionById.
  * Execution flow: FindListReactionByIdPreProcessor → backend proxy → FindListReactionByIdPostProcessor
  */
+@Priority(20)
 @ApplicationScoped
 public class FindListReactionByIdRoute extends RouteBuilder {
 
@@ -30,7 +32,7 @@ public class FindListReactionByIdRoute extends RouteBuilder {
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")
-                    .toD("{{backend.base-url}}/list-reactions/${header.id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .toD("{{backend.base-url}}${header.CamelHttpPath}?bridgeEndpoint=true&throwExceptionOnFailure=false")
                     .process(postProcessor)
             .end();
     }

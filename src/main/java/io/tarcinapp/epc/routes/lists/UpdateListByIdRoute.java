@@ -30,7 +30,7 @@ public class UpdateListByIdRoute extends RouteBuilder {
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")
-                    .toD("{{backend.base-url}}/lists/${header.id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .toD("{{backend.base-url}}${header.CamelHttpPath}?bridgeEndpoint=true&throwExceptionOnFailure=false")
                     .process(postProcessor)
             .end();
     }

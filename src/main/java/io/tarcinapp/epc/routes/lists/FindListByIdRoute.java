@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.lists;
 
 import io.tarcinapp.epc.processors.lists.FindListByIdPreProcessor;
 import io.tarcinapp.epc.processors.lists.FindListByIdPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for findListById.
  * Execution flow: FindListByIdPreProcessor → backend proxy → FindListByIdPostProcessor
  */
+@Priority(20)
 @ApplicationScoped
 public class FindListByIdRoute extends RouteBuilder {
 
@@ -30,7 +32,7 @@ public class FindListByIdRoute extends RouteBuilder {
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")
-                    .toD("{{backend.base-url}}/lists/${header.id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .toD("{{backend.base-url}}${header.CamelHttpPath}?bridgeEndpoint=true&throwExceptionOnFailure=false")
                     .process(postProcessor)
             .end();
     }

@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.relations;
 
 import io.tarcinapp.epc.processors.relations.CountRelationsPreProcessor;
 import io.tarcinapp.epc.processors.relations.CountRelationsPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for countRelations.
  * Execution flow: CountRelationsPreProcessor → backend proxy → CountRelationsPostProcessor
  */
+@Priority(10)
 @ApplicationScoped
 public class CountRelationsRoute extends RouteBuilder {
 

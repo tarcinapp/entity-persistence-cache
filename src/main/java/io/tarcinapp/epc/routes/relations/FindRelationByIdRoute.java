@@ -2,6 +2,7 @@ package io.tarcinapp.epc.routes.relations;
 
 import io.tarcinapp.epc.processors.relations.FindRelationByIdPreProcessor;
 import io.tarcinapp.epc.processors.relations.FindRelationByIdPostProcessor;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.apache.camel.builder.RouteBuilder;
@@ -10,6 +11,7 @@ import org.apache.camel.builder.RouteBuilder;
  * Camel route for findRelationById.
  * Execution flow: FindRelationByIdPreProcessor → backend proxy → FindRelationByIdPostProcessor
  */
+@Priority(20)
 @ApplicationScoped
 public class FindRelationByIdRoute extends RouteBuilder {
 
@@ -30,7 +32,7 @@ public class FindRelationByIdRoute extends RouteBuilder {
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")
-                    .toD("{{backend.base-url}}/relations/${header.id}?bridgeEndpoint=true&throwExceptionOnFailure=false")
+                    .toD("{{backend.base-url}}${header.CamelHttpPath}?bridgeEndpoint=true&throwExceptionOnFailure=false")
                     .process(postProcessor)
             .end();
     }
