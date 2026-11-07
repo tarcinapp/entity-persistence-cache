@@ -55,8 +55,8 @@ public class LockService {
     @ConfigProperty(name = "epc.lock.lease-time", defaultValue = "30000")
     long leaseTimeMs;
 
-    @ConfigProperty(name = "quarkus.redis.hosts", defaultValue = "redis://localhost:6379")
-    String redisHosts;
+    @ConfigProperty(name = "epc.redis.url", defaultValue = "redis://localhost:6379")
+    String redisUrl;
 
     @Inject
     MeterRegistry meterRegistry;
@@ -67,12 +67,12 @@ public class LockService {
     void init() {
         Config config = new Config();
         config.useSingleServer()
-              .setAddress(redisHosts)
+              .setAddress(redisUrl)
               .setConnectionMinimumIdleSize(1)
               .setConnectionPoolSize(10);
         redisson = Redisson.create(config);
         LOG.infof("LockService initialised with Redis at %s (wait=%dms, lease=%dms).",
-                redisHosts, waitTimeMs, leaseTimeMs);
+                redisUrl, waitTimeMs, leaseTimeMs);
     }
 
     /**

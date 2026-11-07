@@ -154,12 +154,28 @@
         <!-- ── Redis / Redisson ───────────────────────────────────────── -->
 
         <!--
+            quarkus-redis-client
+            Quarkus-managed Redis connection for Phase 2 cache operations
+            (GET, SET, DEL, SCAN, TTL).  Owns the quarkus.redis.* config
+            namespace — eliminates the "unrecognized configuration key" warning
+            and enables Dev Services (disabled for now; enable when a Docker
+            daemon is available).  Supports single-node, cluster, and sentinel
+            topologies via quarkus.redis.* env-var overrides at deployment time
+            with no code changes.
+        -->
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-redis-client</artifactId>
+        </dependency>
+
+        <!--
             redisson
-            Provides RLockReactive / RedissonReactiveClient for distributed
-            scope locks.  We use the standalone redisson JAR (not the Quarkus
-            extension) to keep full control over the reactive lock API, since
-            the quarkus-redisson extension couples to Quarkus lifecycle but
-            doesn't yet expose all RLockReactive methods cleanly.
+            Provides RLockReactive for distributed scope locks exclusively.
+            quarkus-redis-client has no distributed lock abstraction, so
+            Redisson is kept for RLockReactive.tryLockAsync() only.
+            Configured independently via epc.redis.* properties so the lock
+            client and the cache client can target different topologies if
+            ever required (e.g. dedicated redis-locks vs redis-cache instances).
         -->
         <dependency>
             <groupId>org.redisson</groupId>
