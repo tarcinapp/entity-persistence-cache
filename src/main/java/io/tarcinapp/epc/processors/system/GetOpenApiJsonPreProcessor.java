@@ -3,6 +3,7 @@ package io.tarcinapp.epc.processors.system;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
+import org.jboss.logging.Logger;
 
 /**
  * Pass-through stub for GetOpenApiJson.
@@ -11,8 +12,11 @@ import org.apache.camel.Processor;
 @ApplicationScoped
 public class GetOpenApiJsonPreProcessor implements Processor {
 
+    private static final Logger LOG = Logger.getLogger(GetOpenApiJsonPreProcessor.class);
+
     @Override
     public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
+        LOG.debugf("openapi.json requested; requestId=%s",
+                exchange.getMessage().getHeader("X-Request-Id", String.class));
     }
 }
