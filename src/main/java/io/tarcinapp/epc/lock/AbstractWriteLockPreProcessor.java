@@ -47,6 +47,18 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
     public static final String ACQUIRED_LOCKS_PROPERTY = "epc.acquired.locks";
     /** Exchange property key for lock type label (metrics). */
     public static final String LOCK_TYPE_PROPERTY = "epc.lock.type";
+    /**
+     * Exchange property key for the merged payload node produced by PATCH
+     * pre-processors.  Set by {@code Update*ByIdPreProcessor.beforeLocks()};
+     * read back in {@link #resolveMergedPayloadNode(Exchange)}.
+     */
+    public static final String MERGED_PAYLOAD_NODE_PROPERTY = "epc.patch.merged.node";
+    /**
+     * Exchange property key set to {@code true} by PATCH pre-processors when
+     * the record-fetch step returned a non-OK outcome (404 or 503).
+     * Checked in {@link #isMergedNodeSignalStop(Exchange)}.
+     */
+    public static final String MERGED_PAYLOAD_STOP_PROPERTY = "epc.patch.merged.stop";
 
     @ConfigProperty(name = "epc.app-shortcode", defaultValue = "")
     String fallbackAppShortcode;
@@ -92,12 +104,51 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
         // no-op by default
     }
 
+    /**
+     * Returns the payload node to use for lock key interpolation.
+     *
+     * <p>The default implementation reads the
+     * {@link #MERGED_PAYLOAD_NODE_PROPERTY} exchange property set by PATCH
+     * pre-processors in their {@code beforeLocks()} override, and returns it
+     * when present.  Returns {@code null} when the property is absent (i.e. for
+     * POST, PUT, and DELETE operations), causing {@code process()} to fall back
+     * to parsing the raw request body.</p>
+     *
+     * <p>Subclasses do not need to override this method — they simply set the
+     * exchange property in {@code beforeLocks()} via
+     * {@link #MERGED_PAYLOAD_NODE_PROPERTY}.</p>
+     */
+    protected JsonNode resolveMergedPayloadNode(Exchange exchange) throws Exception {
+        return exchange.getProperty(MERGED_PAYLOAD_NODE_PROPERTY, JsonNode.class);
+    }
+
+    /**
+     * Returns {@code true} if the route should stop after
+     * {@link #beforeLocks(Exchange)} completes.
+     *
+     * <p>The default implementation reads the
+     * {@link #MERGED_PAYLOAD_STOP_PROPERTY} exchange property set by PATCH
+     * pre-processors when the record-fetch step returned 404 or 503.  In those
+     * cases the route is already short-circuited with the appropriate error
+     * response; lock acquisition must be skipped.</p>
+     *
+     * <p>Subclasses do not need to override this method — they simply set the
+     * exchange property via {@link #MERGED_PAYLOAD_STOP_PROPERTY}.</p>
+     */
+    protected boolean isMergedNodeSignalStop(Exchange exchange) {
+        return Boolean.TRUE.equals(exchange.getProperty(MERGED_PAYLOAD_STOP_PROPERTY, Boolean.class));
+    }
+
     @Override
     public final void process(Exchange exchange) throws Exception {
         String requestId = exchange.getMessage().getHeader("X-Request-Id", String.class);
 
         beforeLocks(exchange);
         if (!shouldAcquireLocks()) {
+            return;
+        }
+        // PATCH processors signal route-stop (404/503) via isMergedNodeSignalStop()
+        if (isMergedNodeSignalStop(exchange)) {
             return;
         }
 
@@ -113,17 +164,20 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
             return;
         }
 
-        // Parse the request body to extract field values for lock key interpolation
-        String bodyStr = exchange.getMessage().getBody(String.class);
-        JsonNode payloadNode;
-        try {
-            payloadNode = (bodyStr != null && !bodyStr.isBlank())
-                    ? objectMapper.readTree(bodyStr)
-                    : objectMapper.createObjectNode();
-        } catch (Exception e) {
-            LOG.warnf("Could not parse request body as JSON — using empty node for lock key building. requestId=%s",
-                    requestId);
-            payloadNode = objectMapper.createObjectNode();
+        // Use the pre-built merged node when supplied by a PATCH pre-processor,
+        // otherwise fall back to parsing the raw request body.
+        JsonNode payloadNode = resolveMergedPayloadNode(exchange);
+        if (payloadNode == null) {
+            String bodyStr = exchange.getMessage().getBody(String.class);
+            try {
+                payloadNode = (bodyStr != null && !bodyStr.isBlank())
+                        ? objectMapper.readTree(bodyStr)
+                        : objectMapper.createObjectNode();
+            } catch (Exception e) {
+                LOG.warnf("Could not parse request body as JSON — using empty node for lock key building. requestId=%s",
+                        requestId);
+                payloadNode = objectMapper.createObjectNode();
+            }
         }
 
         // Collect all lock keys from uniqueness rules + limit rules
@@ -162,7 +216,14 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
 
     // ── Private helpers ────────────────────────────────────────────────────────
 
-    private String resolveAppShortcode(Exchange exchange) {
+    /**
+     * Resolves the application shortcode from the {@code X-App-Shortcode} header,
+     * falling back to the {@code epc.app-shortcode} env var.
+     * Exposed as {@code protected} so PATCH pre-processors can use it inside
+     * {@code beforeLocks()} to build the correct shortcode for
+     * {@link PatchMergeHelper#fetchAndMerge}.
+     */
+    protected String resolveAppShortcode(Exchange exchange) {
         String header = exchange.getMessage().getHeader("X-App-Shortcode", String.class);
         if (header != null && !header.isBlank()) {
             return header;
@@ -243,9 +304,31 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
     }
 
     /**
-     * Short-circuits the route with the given HTTP status code and JSON error body.
+     * Extracts the record ID from the Camel {@code id} path-parameter header.
+     *
+     * <p>Camel's platform-http component stores path parameters as
+     * {@code List<String>}.  Exposed as {@code protected} so PATCH pre-processors
+     * can resolve the ID inside {@code beforeLocks()} when calling
+     * {@link PatchMergeHelper#fetchAndMerge}.</p>
      */
-    private void sendError(Exchange exchange, int status, String error, String message) {
+    protected String resolveId(Exchange exchange) {
+        Object raw = exchange.getMessage().getHeader("id");
+        if (raw == null) return null;
+        if (raw instanceof List<?> list) {
+            if (list.isEmpty()) return null;
+            Object first = list.get(0);
+            return first != null ? first.toString() : null;
+        }
+        String s = raw.toString().trim();
+        return s.isBlank() ? null : s;
+    }
+
+    /**
+     * Short-circuits the route with the given HTTP status code and JSON error body.
+     * Exposed as {@code protected} so PATCH pre-processors can send 404/503 from
+     * within {@code beforeLocks()}.
+     */
+    protected void sendError(Exchange exchange, int status, String error, String message) {
         exchange.setProperty("CamelRouteStop", Boolean.TRUE);
         exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, status);
         exchange.getMessage().setHeader("Content-Type", "application/json");
