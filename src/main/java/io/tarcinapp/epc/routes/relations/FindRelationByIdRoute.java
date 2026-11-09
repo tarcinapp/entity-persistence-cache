@@ -2,18 +2,20 @@ package io.tarcinapp.epc.routes.relations;
 
 import io.tarcinapp.epc.processors.relations.FindRelationByIdPreProcessor;
 import io.tarcinapp.epc.processors.relations.FindRelationByIdPostProcessor;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
  * Camel route for findRelationById.
  * Execution flow: FindRelationByIdPreProcessor → backend proxy → FindRelationByIdPostProcessor
  */
-@Priority(20)
 @ApplicationScoped
 public class FindRelationByIdRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     FindRelationByIdPreProcessor preProcessor;
@@ -25,10 +27,11 @@ public class FindRelationByIdRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/relations/{id}?httpMethodRestrict=GET")
             .routeId("findRelationById")
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

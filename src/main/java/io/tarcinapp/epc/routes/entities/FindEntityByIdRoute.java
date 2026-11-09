@@ -2,18 +2,20 @@ package io.tarcinapp.epc.routes.entities;
 
 import io.tarcinapp.epc.processors.entities.FindEntityByIdPreProcessor;
 import io.tarcinapp.epc.processors.entities.FindEntityByIdPostProcessor;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
  * Camel route for findEntityById.
  * Execution flow: FindEntityByIdPreProcessor → backend proxy → FindEntityByIdPostProcessor
  */
-@Priority(20)
 @ApplicationScoped
 public class FindEntityByIdRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     FindEntityByIdPreProcessor preProcessor;
@@ -25,10 +27,11 @@ public class FindEntityByIdRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/entities/{id}?httpMethodRestrict=GET")
             .routeId("findEntityById")
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

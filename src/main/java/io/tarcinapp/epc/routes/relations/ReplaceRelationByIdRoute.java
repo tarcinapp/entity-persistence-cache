@@ -4,6 +4,7 @@ import io.tarcinapp.epc.processors.relations.ReplaceRelationByIdPreProcessor;
 import io.tarcinapp.epc.processors.relations.ReplaceRelationByIdPostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
@@ -12,6 +13,9 @@ import org.apache.camel.builder.RouteBuilder;
  */
 @ApplicationScoped
 public class ReplaceRelationByIdRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     ReplaceRelationByIdPreProcessor preProcessor;
@@ -23,10 +27,11 @@ public class ReplaceRelationByIdRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/relations/{id}?httpMethodRestrict=PUT")
             .routeId("replaceRelationById")
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

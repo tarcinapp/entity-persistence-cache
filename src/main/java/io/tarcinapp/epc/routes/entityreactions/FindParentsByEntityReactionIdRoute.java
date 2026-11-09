@@ -4,6 +4,7 @@ import io.tarcinapp.epc.processors.entityreactions.FindParentsByEntityReactionId
 import io.tarcinapp.epc.processors.entityreactions.FindParentsByEntityReactionIdPostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
@@ -12,6 +13,9 @@ import org.apache.camel.builder.RouteBuilder;
  */
 @ApplicationScoped
 public class FindParentsByEntityReactionIdRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     FindParentsByEntityReactionIdPreProcessor preProcessor;
@@ -23,10 +27,11 @@ public class FindParentsByEntityReactionIdRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/entity-reactions/{id}/parents?httpMethodRestrict=GET")
             .routeId("findParentsByEntityReactionId")
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

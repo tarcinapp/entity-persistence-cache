@@ -34,9 +34,20 @@ public abstract class AbstractWriteLockPostProcessor implements Processor {
     @Inject
     LockService lockService;
 
+    /**
+     * Optional hook called after lock release. Default implementation is a no-op.
+     *
+     * <p>Phase 2 create post-processors override this to evict any previously
+     * cached 404 for the newly created record's {@code _id}.</p>
+     */
+    protected void afterLockRelease(Exchange exchange) throws Exception {
+        // no-op by default
+    }
+
     @Override
     public final void process(Exchange exchange) throws Exception {
         releaseLocks(exchange);
+        afterLockRelease(exchange);
     }
 
     /**
@@ -53,8 +64,9 @@ public abstract class AbstractWriteLockPostProcessor implements Processor {
         }
         String lockType = exchange.getProperty(
                 AbstractWriteLockPreProcessor.LOCK_TYPE_PROPERTY, "unknown", String.class);
+        String requestId = exchange.getMessage().getHeader("X-Request-Id", String.class);
         lockService.releaseAll(locks, lockType);
         exchange.removeProperty(AbstractWriteLockPreProcessor.ACQUIRED_LOCKS_PROPERTY);
-        LOG.debugf("Released %d lock(s) for %s.", locks.size(), lockType);
+        LOG.debugf("Released %d lock(s) for %s. requestId=%s", locks.size(), lockType, requestId);
     }
 }

@@ -20,6 +20,10 @@ import org.jboss.logging.Logger;
  *   <li><b>Body</b> — logged only when the exchange carries a non-blank body
  *       (i.e. POST / PUT / PATCH payloads).</li>
  * </ol>
+ *
+ * <p>MDC injection of {@code RequestId} is handled by {@link RequestIdMdcProcessor},
+ * which runs on the Vert.x worker thread that owns the exchange and is therefore
+ * visible to the logging framework on that thread.
  */
 @ApplicationScoped
 public class TraceLoggingRouteBuilder extends RouteBuilder {

@@ -2,18 +2,20 @@ package io.tarcinapp.epc.routes.relations;
 
 import io.tarcinapp.epc.processors.relations.CountRelationsPreProcessor;
 import io.tarcinapp.epc.processors.relations.CountRelationsPostProcessor;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
  * Camel route for countRelations.
  * Execution flow: CountRelationsPreProcessor → backend proxy → CountRelationsPostProcessor
  */
-@Priority(10)
 @ApplicationScoped
 public class CountRelationsRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     CountRelationsPreProcessor preProcessor;
@@ -25,10 +27,12 @@ public class CountRelationsRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/relations/count?httpMethodRestrict=GET")
             .routeId("countRelations")
+            .startupOrder(3)
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

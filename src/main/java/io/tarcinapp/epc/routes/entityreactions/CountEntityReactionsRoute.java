@@ -2,18 +2,20 @@ package io.tarcinapp.epc.routes.entityreactions;
 
 import io.tarcinapp.epc.processors.entityreactions.CountEntityReactionsPreProcessor;
 import io.tarcinapp.epc.processors.entityreactions.CountEntityReactionsPostProcessor;
-import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
  * Camel route for countEntityReactions.
  * Execution flow: CountEntityReactionsPreProcessor → backend proxy → CountEntityReactionsPostProcessor
  */
-@Priority(10)
 @ApplicationScoped
 public class CountEntityReactionsRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     CountEntityReactionsPreProcessor preProcessor;
@@ -25,10 +27,12 @@ public class CountEntityReactionsRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/entity-reactions/count?httpMethodRestrict=GET")
             .routeId("countEntityReactions")
+            .startupOrder(4)
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

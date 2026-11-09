@@ -1,18 +1,11 @@
 package io.tarcinapp.epc.processors.entityreactions;
 
+import io.tarcinapp.epc.lock.AbstractWriteLockPostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for DeleteEntityReactionById.
- * Extend with custom logic as needed.
+ * Post-processor for DELETE /entity-reactions/{id} (deleteEntityReactionById).
+ * Releases any acquired locks (none in practice since DELETE bypasses lock acquisition).
  */
 @ApplicationScoped
-public class DeleteEntityReactionByIdPostProcessor implements Processor {
-
-    @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
-}
+public class DeleteEntityReactionByIdPostProcessor extends AbstractWriteLockPostProcessor {}

@@ -1,18 +1,31 @@
 package io.tarcinapp.epc.processors.entities;
 
+import io.tarcinapp.epc.cache.CacheEvictionHelper;
+import io.tarcinapp.epc.lock.AbstractWriteLockPreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for DeleteEntityById.
- * Extend with custom logic as needed.
+ * Pre-processor for DELETE /entities/{id} (deleteEntityById).
+ * Phase 2: evicts the findById cache entry.
+ * No lock acquisition — DELETE carries no payload and therefore no interpolatable
+ * lock key dimensions. EPS's own delete is atomic; no TOCTOU race exists on delete.
  */
 @ApplicationScoped
-public class DeleteEntityByIdPreProcessor implements Processor {
+public class DeleteEntityByIdPreProcessor extends AbstractWriteLockPreProcessor {
+
+    @Inject
+    CacheEvictionHelper evictionHelper;
 
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
+    protected String recordType() { return "entity"; }
+
+    @Override
+    protected boolean shouldAcquireLocks() { return false; }
+
+    @Override
+    protected void beforeLocks(Exchange exchange) {
+        evictionHelper.evictById(exchange, recordType());
     }
 }

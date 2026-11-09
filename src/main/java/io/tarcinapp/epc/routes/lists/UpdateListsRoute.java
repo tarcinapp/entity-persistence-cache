@@ -4,6 +4,7 @@ import io.tarcinapp.epc.processors.lists.UpdateListsPreProcessor;
 import io.tarcinapp.epc.processors.lists.UpdateListsPostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.tarcinapp.epc.RequestIdMdcProcessor;
 import org.apache.camel.builder.RouteBuilder;
 
 /**
@@ -12,6 +13,9 @@ import org.apache.camel.builder.RouteBuilder;
  */
 @ApplicationScoped
 public class UpdateListsRoute extends RouteBuilder {
+
+    @Inject
+    RequestIdMdcProcessor mdcProcessor;
 
     @Inject
     UpdateListsPreProcessor preProcessor;
@@ -23,10 +27,11 @@ public class UpdateListsRoute extends RouteBuilder {
     public void configure() {
         from("platform-http:/lists?httpMethodRestrict=PATCH")
             .routeId("updateLists")
+            .process(mdcProcessor)
             .process(preProcessor)
             .choice()
                 .when(exchangeProperty("CamelRouteStop").isEqualTo(Boolean.TRUE))
-                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor")
+                    .log("Route ${routeId} short-circuited by pre-processor — skipping backend and post-processor. requestId=${header.X-Request-Id}")
                 .otherwise()
                     .removeHeader("Content-Length")
                     .removeHeader("Transfer-Encoding")

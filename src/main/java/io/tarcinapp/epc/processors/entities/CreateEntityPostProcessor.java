@@ -1,11 +1,15 @@
 package io.tarcinapp.epc.processors.entities;
 
-import io.tarcinapp.epc.lock.AbstractWriteLockPostProcessor;
+import io.tarcinapp.epc.cache.AbstractCreateCacheEvictPostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * Post-processor for POST /entities (createEntity).
- * Releases all scope locks acquired by the matching pre-processor.
+ * Phase 2: evicts any stale 404 cache entry for the newly created record's _id.
+ * Phase 1: releases all scope locks acquired by the matching pre-processor.
  */
 @ApplicationScoped
-public class CreateEntityPostProcessor extends AbstractWriteLockPostProcessor {}
+public class CreateEntityPostProcessor extends AbstractCreateCacheEvictPostProcessor {
+    @Override
+    protected String recordType() { return "entity"; }
+}

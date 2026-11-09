@@ -1,18 +1,14 @@
 package io.tarcinapp.epc.processors.relations;
 
+import io.tarcinapp.epc.cache.AbstractFindByIdCachePostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindRelationById.
- * Extend with custom logic as needed.
+ * Post-processor for GET /relations/{id} (findRelationById) — Phase 2.
+ * Populates the findById Redis cache from the EPS response on a cache miss.
  */
 @ApplicationScoped
-public class FindRelationByIdPostProcessor implements Processor {
-
+public class FindRelationByIdPostProcessor extends AbstractFindByIdCachePostProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "relation"; }
 }

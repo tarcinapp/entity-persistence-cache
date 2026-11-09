@@ -81,8 +81,22 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
         return true;
     }
 
+    /**
+     * Optional hook called at the very start of {@link #process(Exchange)},
+     * before lock acquisition. Default implementation is a no-op.
+     *
+     * <p>Phase 2 subclasses (write-by-id processors) override this to evict
+     * the findById cache entry before forwarding the write to EPS.</p>
+     */
+    protected void beforeLocks(Exchange exchange) throws Exception {
+        // no-op by default
+    }
+
     @Override
     public final void process(Exchange exchange) throws Exception {
+        String requestId = exchange.getMessage().getHeader("X-Request-Id", String.class);
+
+        beforeLocks(exchange);
         if (!shouldAcquireLocks()) {
             return;
         }
@@ -92,7 +106,8 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
         try {
             config = configCacheService.getConfig();
         } catch (Exception e) {
-            LOG.errorf(e, "Failed to fetch /system-info from EPS — returning 503.");
+            LOG.errorf(e, "Failed to fetch /system-info from EPS — returning 503. requestId=%s",
+                    requestId);
             sendError(exchange, 503, "Service Unavailable",
                       "EPC could not fetch EPS configuration: " + e.getMessage());
             return;
@@ -106,7 +121,8 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
                     ? objectMapper.readTree(bodyStr)
                     : objectMapper.createObjectNode();
         } catch (Exception e) {
-            LOG.warnf("Could not parse request body as JSON — using empty node for lock key building.");
+            LOG.warnf("Could not parse request body as JSON — using empty node for lock key building. requestId=%s",
+                    requestId);
             payloadNode = objectMapper.createObjectNode();
         }
 
@@ -116,25 +132,29 @@ public abstract class AbstractWriteLockPreProcessor implements Processor {
         allKeys.addAll(buildLimitKeys(appShortcode, config, payloadNode));
 
         if (allKeys.isEmpty()) {
-            LOG.debugf("No lock keys required for this request (no applicable rules).");
+            LOG.debugf("No lock keys required for this request (no applicable rules). requestId=%s",
+                    requestId);
             return;
         }
 
-        LOG.debugf("Acquiring %d lock(s) for %s write: %s", allKeys.size(), recordType(), allKeys);
+        LOG.debugf("Acquiring %d lock(s) for %s write: %s requestId=%s",
+                allKeys.size(), recordType(), allKeys, requestId);
 
         // Acquire all locks — throws on timeout (423) or Redis failure (503)
         try {
             List<RLock> locks = lockService.acquireAll(allKeys, determineLockTypeLabel(allKeys, config));
             exchange.setProperty(ACQUIRED_LOCKS_PROPERTY, locks);
             exchange.setProperty(LOCK_TYPE_PROPERTY, determineLockTypeLabel(allKeys, config));
-            LOG.debugf("All locks acquired for %s write.", recordType());
+            LOG.debugf("All locks acquired for %s write. requestId=%s", recordType(), requestId);
         } catch (LockService.LockTimeoutException e) {
-            LOG.warnf("Lock timeout for %s write: %s", recordType(), e.getMessage());
+            LOG.warnf("Lock timeout for %s write: %s requestId=%s",
+                    recordType(), e.getMessage(), requestId);
             sendError(exchange, 423, "Locked",
                       "Another request is currently processing a write for the same resource. "
                       + "Please retry after a moment.");
         } catch (LockService.RedisUnavailableException e) {
-            LOG.errorf(e, "Redis unavailable during lock acquisition for %s write.", recordType());
+            LOG.errorf(e, "Redis unavailable during lock acquisition for %s write. requestId=%s",
+                    recordType(), requestId);
             sendError(exchange, 503, "Service Unavailable",
                       "EPC lock service is temporarily unavailable: " + e.getMessage());
         }

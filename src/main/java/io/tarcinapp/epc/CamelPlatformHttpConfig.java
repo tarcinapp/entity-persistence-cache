@@ -12,8 +12,6 @@ import org.jboss.logging.Logger;
  * characters from HTTP responses.  Query parameter names like filter[limit]
  * are invalid HTTP header names (RFC 7230 §3.2) and would cause Vert.x to
  * throw an IllegalArgumentException.
- *
- * Copied from the entity-persistence-universal-orchestrator template.
  */
 @ApplicationScoped
 public class CamelPlatformHttpConfig {

@@ -1,18 +1,30 @@
 package io.tarcinapp.epc.processors.listreactions;
 
+import io.tarcinapp.epc.cache.CacheEvictionHelper;
+import io.tarcinapp.epc.lock.AbstractWriteLockPreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for DeleteListReactionById.
- * Extend with custom logic as needed.
+ * Pre-processor for DELETE /list-reactions/{id} (deleteListReactionById).
+ * Phase 2: evicts the findById cache entry.
+ * No lock acquisition — DELETE carries no payload with interpolatable key dimensions.
  */
 @ApplicationScoped
-public class DeleteListReactionByIdPreProcessor implements Processor {
+public class DeleteListReactionByIdPreProcessor extends AbstractWriteLockPreProcessor {
+
+    @Inject
+    CacheEvictionHelper evictionHelper;
 
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
+    protected String recordType() { return "list-reaction"; }
+
+    @Override
+    protected boolean shouldAcquireLocks() { return false; }
+
+    @Override
+    protected void beforeLocks(Exchange exchange) {
+        evictionHelper.evictById(exchange, recordType());
     }
 }

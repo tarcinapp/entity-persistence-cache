@@ -1,18 +1,14 @@
 package io.tarcinapp.epc.processors.entityreactions;
 
+import io.tarcinapp.epc.cache.AbstractFindByIdCachePreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindEntityReactionById.
- * Extend with custom logic as needed.
+ * Pre-processor for GET /entity-reactions/{id} (findEntityReactionById) — Phase 2.
+ * Checks the findById Redis cache; short-circuits the route on a hit.
  */
 @ApplicationScoped
-public class FindEntityReactionByIdPreProcessor implements Processor {
-
+public class FindEntityReactionByIdPreProcessor extends AbstractFindByIdCachePreProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "entity-reaction"; }
 }
