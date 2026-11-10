@@ -77,9 +77,12 @@ public abstract class AbstractFindByIdCachePostProcessor implements Processor {
         String contentType = exchange.getMessage().getHeader("Content-Type", String.class);
 
         // ── Store in Redis ────────────────────────────────────────────────────
-        cacheService.put(cacheKey, status, body, contentType, recordType(), resolveTtlMs());
+        long ttlMs = resolveTtlMs();
+        cacheService.put(cacheKey, status, body, contentType, recordType(), ttlMs);
 
-        // ── Mark response as a cache miss for observability ───────────────────
+        // ── Set freshness and observability headers ───────────────────────────
+        long maxAgeSeconds = ttlMs / 1000;
+        exchange.getMessage().setHeader("Cache-Control", "max-age=" + maxAgeSeconds);
         exchange.getMessage().setHeader("X-Cache-Status", "MISS");
         LOG.debugf("findById cache populated for %s (status=%d, key=%s) requestId=%s",
                 recordType(), status, cacheKey, requestId);

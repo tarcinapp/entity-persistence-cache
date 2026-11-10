@@ -118,17 +118,18 @@ public abstract class AbstractFindByIdCachePreProcessor implements Processor {
 
         // ── If-None-Match conditional request support ─────────────────────────
         String ifNoneMatch = exchange.getMessage().getHeader("If-None-Match", String.class);
+        long maxAgeSeconds = resolveTtlMs() / 1000;
         if (ifNoneMatch != null && !ifNoneMatch.isBlank() && ifNoneMatch.equals(entry.etag())) {
             LOG.debugf("findById 304 Not Modified (ETag match) for %s/%s requestId=%s",
                     recordType(), id, requestId);
-            shortCircuit(exchange, 304, null, null, entry.etag());
+            shortCircuit(exchange, 304, null, null, entry.etag(), maxAgeSeconds);
             return;
         }
 
         // ── Cache hit — short-circuit the route ───────────────────────────────
         LOG.debugf("findById cache HIT — short-circuiting for %s/%s requestId=%s",
                 recordType(), id, requestId);
-        shortCircuit(exchange, entry.status(), entry.body(), entry.contentType(), entry.etag());
+        shortCircuit(exchange, entry.status(), entry.body(), entry.contentType(), entry.etag(), maxAgeSeconds);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -171,9 +172,13 @@ public abstract class AbstractFindByIdCachePreProcessor implements Processor {
     /**
      * Short-circuits the Camel route by setting the response directly on the
      * exchange and flagging {@code CamelRouteStop=true}.
+     *
+     * @param maxAgeSeconds the configured TTL in seconds; written as
+     *                      {@code Cache-Control: max-age=N} so downstream clients
+     *                      know the freshness window.
      */
     private void shortCircuit(Exchange exchange, int status, String body,
-                              String contentType, String etag) {
+                              String contentType, String etag, long maxAgeSeconds) {
         exchange.setProperty("CamelRouteStop", Boolean.TRUE);
         exchange.getMessage().setHeader(Exchange.HTTP_RESPONSE_CODE, status);
         if (contentType != null) {
@@ -182,6 +187,7 @@ public abstract class AbstractFindByIdCachePreProcessor implements Processor {
         if (etag != null) {
             exchange.getMessage().setHeader("ETag", etag);
         }
+        exchange.getMessage().setHeader("Cache-Control", "max-age=" + maxAgeSeconds);
         exchange.getMessage().setHeader("X-Cache-Status", "HIT");
         exchange.getMessage().setBody(body);
     }
