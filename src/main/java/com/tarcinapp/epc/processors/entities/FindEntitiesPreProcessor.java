@@ -1,18 +1,15 @@
 package com.tarcinapp.epc.processors.entities;
 
+import com.tarcinapp.epc.cache.AbstractVisitorCollectionCachePreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindEntities.
- * Extend with custom logic as needed.
+ * Pre-processor for GET /entities (findEntities).
+ * Phase 3: serves visitor collection queries from the Redis visitor cache
+ * ({@code set[actives]=true&set[publics]=true}) and short-circuits on a hit.
  */
 @ApplicationScoped
-public class FindEntitiesPreProcessor implements Processor {
-
+public class FindEntitiesPreProcessor extends AbstractVisitorCollectionCachePreProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "entity"; }
 }

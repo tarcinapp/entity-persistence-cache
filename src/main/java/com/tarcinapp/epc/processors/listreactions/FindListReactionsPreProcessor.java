@@ -1,18 +1,14 @@
 package com.tarcinapp.epc.processors.listreactions;
 
+import com.tarcinapp.epc.cache.AbstractVisitorCollectionCachePreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindListReactions.
- * Extend with custom logic as needed.
+ * Pre-processor for GET /list-reactions (findListReactions).
+ * Phase 3: serves visitor collection queries from the Redis visitor cache.
  */
 @ApplicationScoped
-public class FindListReactionsPreProcessor implements Processor {
-
+public class FindListReactionsPreProcessor extends AbstractVisitorCollectionCachePreProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "list-reaction"; }
 }

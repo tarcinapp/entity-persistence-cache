@@ -3,6 +3,7 @@ package com.tarcinapp.epc.processors.relations;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tarcinapp.epc.cache.CacheEvictionHelper;
+import com.tarcinapp.epc.cache.VisitorCollectionCacheService;
 import com.tarcinapp.epc.lock.AbstractWriteLockPreProcessor;
 import com.tarcinapp.epc.lock.PatchMergeHelper;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -31,6 +32,9 @@ public class UpdateRelationByIdPreProcessor extends AbstractWriteLockPreProcesso
 
     @Inject
     CacheEvictionHelper evictionHelper;
+
+    @Inject
+    VisitorCollectionCacheService visitorCacheService;
 
     @Inject
     PatchMergeHelper patchMergeHelper;
@@ -79,6 +83,9 @@ public class UpdateRelationByIdPreProcessor extends AbstractWriteLockPreProcesso
 
         // Step 3: evict cache (must precede lock acquisition)
         evictionHelper.evictById(exchange, recordType());
+
+        // Phase 3: flush visitor collection cache
+        visitorCacheService.flush(appShortcode, recordType());
 
         // Stash merged node for base-class lock key interpolation
         exchange.setProperty(MERGED_PAYLOAD_NODE_PROPERTY, result.mergedNode());

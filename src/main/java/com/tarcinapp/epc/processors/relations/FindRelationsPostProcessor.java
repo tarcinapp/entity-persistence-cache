@@ -1,18 +1,14 @@
 package com.tarcinapp.epc.processors.relations;
 
+import com.tarcinapp.epc.cache.AbstractVisitorCollectionCachePostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindRelations.
- * Extend with custom logic as needed.
+ * Post-processor for GET /relations (findRelations).
+ * Phase 3: populates the Redis visitor collection cache on a cache miss.
  */
 @ApplicationScoped
-public class FindRelationsPostProcessor implements Processor {
-
+public class FindRelationsPostProcessor extends AbstractVisitorCollectionCachePostProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "relation"; }
 }

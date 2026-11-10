@@ -1,18 +1,30 @@
 package com.tarcinapp.epc.processors.lists;
 
+import com.tarcinapp.epc.cache.VisitorCollectionCacheService;
+import com.tarcinapp.epc.lock.AbstractWriteLockPreProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for UpdateLists.
- * Extend with custom logic as needed.
+ * Pre-processor for PATCH /lists (updateLists — updateAll by filter).
+ * Phase 3: flushes the visitor collection cache.
+ * No per-record lock acquisition — updateAll is not currently scoped by EPC.
  */
 @ApplicationScoped
-public class UpdateListsPreProcessor implements Processor {
+public class UpdateListsPreProcessor extends AbstractWriteLockPreProcessor {
+
+    @Inject
+    VisitorCollectionCacheService visitorCacheService;
 
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
+    protected String recordType() { return "list"; }
+
+    @Override
+    protected boolean shouldAcquireLocks() { return false; }
+
+    @Override
+    protected void beforeLocks(Exchange exchange) {
+        visitorCacheService.flush(resolveAppShortcode(exchange), recordType());
     }
 }

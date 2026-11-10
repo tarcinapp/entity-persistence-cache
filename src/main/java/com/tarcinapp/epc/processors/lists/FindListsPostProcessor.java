@@ -1,18 +1,14 @@
 package com.tarcinapp.epc.processors.lists;
 
+import com.tarcinapp.epc.cache.AbstractVisitorCollectionCachePostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindLists.
- * Extend with custom logic as needed.
+ * Post-processor for GET /lists (findLists).
+ * Phase 3: populates the Redis visitor collection cache on a cache miss.
  */
 @ApplicationScoped
-public class FindListsPostProcessor implements Processor {
-
+public class FindListsPostProcessor extends AbstractVisitorCollectionCachePostProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "list"; }
 }

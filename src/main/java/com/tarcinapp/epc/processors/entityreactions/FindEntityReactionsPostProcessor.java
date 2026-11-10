@@ -1,18 +1,14 @@
 package com.tarcinapp.epc.processors.entityreactions;
 
+import com.tarcinapp.epc.cache.AbstractVisitorCollectionCachePostProcessor;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 
 /**
- * Pass-through stub for FindEntityReactions.
- * Extend with custom logic as needed.
+ * Post-processor for GET /entity-reactions (findEntityReactions).
+ * Phase 3: populates the Redis visitor collection cache on a cache miss.
  */
 @ApplicationScoped
-public class FindEntityReactionsPostProcessor implements Processor {
-
+public class FindEntityReactionsPostProcessor extends AbstractVisitorCollectionCachePostProcessor {
     @Override
-    public void process(Exchange exchange) throws Exception {
-        // No pre/post processing required for Phase 1 — transparent pass-through.
-    }
+    protected String recordType() { return "entity-reaction"; }
 }
