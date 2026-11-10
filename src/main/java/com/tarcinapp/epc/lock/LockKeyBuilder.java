@@ -40,18 +40,22 @@ import org.jboss.logging.Logger;
  * </p>
  *
  * <h3>Record-limit lock keys</h3>
- * For limit scopes with interpolatable fields (e.g. {@code
- * where[_ownerUsers]=${_ownerUsers}&amp;where[_kind]=book}):
- * <pre>
- *   {appShortcode}:epc:lock:limit:{recordType}:{scopeHash}:{_ownerUsers[i]}
- * </pre>
+ * Locks for record-limit rules are acquired <em>only</em> when
+ * {@code enforceSerialisation=true} is set on the rule.  When absent or
+ * {@code false}, no lock is acquired and EPS's own count check is the sole
+ * enforcement gate (best-effort).
  *
- * For wide-scope/global limit rules (no interpolatable fields) where
- * {@code enforceSerialisation=true}:
+ * <p>When {@code enforceSerialisation=true} and the scope contains
+ * interpolatable fields (e.g. {@code where[_kind]=${_kind}&amp;set[owners][userIds]=${_ownerUsers}}):
+ * <pre>
+ *   {appShortcode}:epc:lock:limit:{recordType}:{scopeHash}:{dim1}:{dim2}:...
+ * </pre>
+ * When {@code enforceSerialisation=true} and the scope has no interpolatable fields:
  * <pre>
  *   {appShortcode}:epc:lock:limit:{recordType}:global       (scope: "")
  *   {appShortcode}:epc:lock:limit:{recordType}:kind:{kind}  (scope: where[_kind]=book)
  * </pre>
+ * </p>
  */
 @ApplicationScoped
 public class LockKeyBuilder {
@@ -115,18 +119,15 @@ public class LockKeyBuilder {
     /**
      * Builds lock keys for a record-limit scope rule.
      *
-     * <p>If the scope contains no interpolatable fields AND
-     * {@code enforceSerialisation=true}, a global or kind-level lock key is
-     * returned.</p>
+     * <p>Returns an empty list unless {@code enforceSerialisation=true} is set
+     * on the rule.  When serialisation is enforced, keys are derived from the
+     * interpolatable dimensions in the scope string; if no dimensions are
+     * present a global or kind-level key is returned.</p>
      *
-     * <p>If the scope has no interpolatable fields and
-     * {@code enforceSerialisation=false} (or absent), an empty list is
-     * returned — no lock is acquired.</p>
-     *
-     * @param appShortcode         resolved app shortcode
-     * @param recordType           e.g. "entity", "list"
-     * @param limit                the RecordLimit rule from EPS config
-     * @param payloadNode          parsed JSON body of the incoming request
+     * @param appShortcode  resolved app shortcode
+     * @param recordType    e.g. "entity", "list"
+     * @param limit         the RecordLimit rule from EPS config
+     * @param payloadNode   parsed JSON body of the incoming request
      * @return list of Redis lock key strings (may be empty)
      */
     public List<String> buildLimitLockKeys(
@@ -135,20 +136,18 @@ public class LockKeyBuilder {
             SystemInfo.RecordLimit limit,
             JsonNode payloadNode) {
 
+        if (!limit.isEnforceSerialisationEnabled()) {
+            return List.of();
+        }
+
         String scope = limit.getScope() == null ? "" : limit.getScope().trim();
         List<String> dimensions = extractInterpolatableDimensions(scope);
 
         if (dimensions.isEmpty()) {
-            // Wide-scope / global rule
-                if (!limit.isEnforceSerialisationEnabled()) {
-                    return List.of();
-                }
-                // enforceSerialisation=true → acquire a named global key
-                String key = buildWideScopeLockKey(appShortcode.toLowerCase(), recordType, scope);
-                return List.of(key);
+            String key = buildWideScopeLockKey(appShortcode.toLowerCase(), recordType, scope);
+            return List.of(key);
         }
 
-        // Per-user / per-kind rule — build keys from payload values
         String scopeHash = Integer.toHexString(scope.hashCode());
         List<List<String>> dimensionValues = new ArrayList<>();
         for (String dim : dimensions) {
